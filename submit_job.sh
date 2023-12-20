@@ -10,7 +10,7 @@
 #SBATCH --partition=short
 #SBATCH --time=00:30:00
 #SBATCH --output=output-project2.out
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:tesla_v100:1
 #SBATCH --mem-per-cpu=20480
 
 ################################################################################
