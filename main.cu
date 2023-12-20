@@ -257,31 +257,15 @@ __global__ void MarchCubeCUDA(
     float3 *meshVertices,
     float3 *meshNormals)
 {
+    // with this implementation, frame 9 test passes, but
+    // for other frames, we get only 0 values starting from index 80000 ish
+   
+     
     //printf("YARRRAAAAAAAAAAAAAAAAAAAA\n");
     // part 2
     int NumX = static_cast<int>(ceil(domainP->size.x / cubeSizeP->x));
     int NumY = static_cast<int>(ceil(domainP->size.y / cubeSizeP->y));
     int NumZ = static_cast<int>(ceil(domainP->size.z / cubeSizeP->z));
-    // TODO: fix values of CubeSizeP
-    
-    /**
-    printf("CubeSizeP size.x = %f, size.y = %f, size.z = %f\n", cubeSizeP->x, cubeSizeP->y, cubeSizeP->y);
-    // returns size.x = 0 , size.y = 0, size.z = 0
-    // returns size.x = -0 , size.y = 0, size.z = 0
-    // returns the largest or the smallest numbers nondeterministically
-    **/ 
-    /**
-    printf("DomainP size.x = %f, size.y = %f, size.z = %f\n", domainP->size.x, domainP->size.y, domainP->size.y);
-    // returns 2 , 2 , 2
-    **/
-    /**
-    printf("NumX = %d, NumY = %d, NumZ = %d\n", NumX, NumY, NumZ);
-    // returns NumX = 0, NumY = 2147483647, NumZ = 0
-    // returns NumX = -2147483648, NumY = 2147483647, NumZ = -2147483648
-    // returns NumX = 1, NumY = 2147483647, NumZ = 1
-    // returns these 3 nondeterministically
-    // WYH??
-    **/
     //printf("PENISSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS\n");
     // calculate thread indx
     int ind = threadIdx.x + blockIdx.x * blockDim.x;
@@ -295,11 +279,10 @@ __global__ void MarchCubeCUDA(
     int indY = ((ind - indZ) / NumZ) % NumY;
     int indX = (((ind - indZ) / NumZ) - indY) / NumY;
     
-    /*
+
     if (indX >= NumX){
         return;
     }
-    */
     
     //TODO: fix 
     float3 *intersect = new float3[12];
@@ -403,10 +386,14 @@ int main(int argc, char *argv[])
 {
     int cubesRes = 50;
     int frameNum = 10;
+    //int frameNum = 1;
     int saveObj = 0;
     int correctTest = 0;
-    int numBlocks = 40;
+    
+    int numBlocks = 31250;
     int numThreads = 64;
+    //int numBlocks = 40;
+    //int numThreads = 64;
     int part = -1;
 
     opterr = 0;
@@ -500,7 +487,7 @@ int main(int argc, char *argv[])
     
     // copy data
     checkCudaErrors( cudaMemcpy(domain_d, &domain, sizeof(Rect3), cudaMemcpyHostToDevice ) );
-    checkCudaErrors( cudaMemcpy(cubeSize_d, &cubeSize_d, sizeof(float3), cudaMemcpyHostToDevice ) );
+    checkCudaErrors( cudaMemcpy(cubeSize_d, &cubeSize, sizeof(float3), cudaMemcpyHostToDevice ) );
     
     ///////////////////////////////////////////////////////////////////
     //         Do not changeomain_d, the memory allocated for testing        //
