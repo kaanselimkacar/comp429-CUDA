@@ -18,8 +18,6 @@
 ################################################################################
 #SBATCH --qos=users
 #SBATCH --account=users
-#SBATCH --mail-type=END
-#SBATCH --mail-user=kkacar20@ku.edu.tr
 
 # Set stack size to unlimited
 echo "Setting stack size to unlimited..."

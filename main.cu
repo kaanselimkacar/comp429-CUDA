@@ -257,10 +257,15 @@ __global__ void MarchCubeCUDA(
     float3 *meshVertices,
     float3 *meshNormals)
 {
+    //printf("YARRRAAAAAAAAAAAAAAAAAAAA\n");
     // part 2
     int NumX = static_cast<int>(ceil(domainP->size.x / cubeSizeP->x));
     int NumY = static_cast<int>(ceil(domainP->size.y / cubeSizeP->y));
     int NumZ = static_cast<int>(ceil(domainP->size.z / cubeSizeP->z));
+    if (NumX == 0 && NumY == 0 && NumZ == 0){
+    //    printf("YARRRAAAAAAAAAAAAAAAAAAAA\n");
+    }
+    //printf("PENISSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS\n");
     // calculate thread indx
     int ind = threadIdx.x + blockIdx.x * blockDim.x;
     // ind = z + iy * NumZ + ix * NumY * NumZ
@@ -272,12 +277,17 @@ __global__ void MarchCubeCUDA(
     int indZ = ind % NumZ;
     int indY = ((ind - indZ) / NumZ) % NumY;
     int indX = (((ind - indZ) / NumZ) - indY) / NumY;
+    
     /*
     if (indX >= NumX){
-        printf("PATLADIKKKK \n");
+        return;
     }
     */
+    
+    //TODO: fix 
     float3 *intersect = new float3[12];
+    //float3 intersect[12];
+    
     float x = domainP->min.x + indX * cubeSizeP->x;
     float y = domainP->min.y + indY * cubeSizeP->y;
     float z = domainP->min.z + indZ * cubeSizeP->z;
@@ -321,6 +331,8 @@ __global__ void MarchCubeCUDA(
     // now create and store the triangle data
     int offset = ind * 16;
     Triangulate(twist, meshVertices + offset, meshNormals + offset, signConfig, intersect);
+    
+    delete[] intersect;
 }
 
 ///////////////////////////////////////////////////////////////////
@@ -457,14 +469,21 @@ int main(int argc, char *argv[])
     // TODO: create domain_d, cubeSize_d, meshVertices_d, meshNormals_d
     // alloc meshVertiecs_d and meshNormals
     // init vars
-    Rect3 domain_d = domain;
-    float3 cubeSize_d = cubeSize;
+    Rect3 *domain_d;
+    float3 *cubeSize_d;
     float3 *meshVertices_d;
     float3 *meshNormals_d;
     
-    // allocate space
-    cudaMalloc(&meshVertices_d, frameSize * frameNum * sizeof(float3));
-    cudaMalloc(&meshNormals_d, frameSize * frameNum * sizeof(float3));
+    // allocate space 
+    checkCudaErrors(cudaMalloc(&domain_d, sizeof(Rect3)));
+    checkCudaErrors(cudaMalloc(&cubeSize_d, sizeof(float3)));
+    
+    checkCudaErrors(cudaMalloc(&meshVertices_d, frameSize * frameNum * sizeof(float3)));
+    checkCudaErrors(cudaMalloc(&meshNormals_d, frameSize * frameNum * sizeof(float3)));
+    
+    // copy data
+    checkCudaErrors( cudaMemcpy(domain_d, &domain, sizeof(Rect3), cudaMemcpyHostToDevice ) );
+    checkCudaErrors( cudaMemcpy(cubeSize_d, &cubeSize_d, sizeof(float3), cudaMemcpyHostToDevice ) );
     
     ///////////////////////////////////////////////////////////////////
     //         Do not changeomain_d, the memory allocated for testing        //
@@ -519,15 +538,18 @@ int main(int argc, char *argv[])
     ///////////////////////////////////////////////////////////////////
     if (part == -1 || part == 1 || part == 2)
     {
+        int offset = 0;
         for (frame = 0; frame < frameNum; frame++)
         {
             start = high_resolution_clock::now();
             ///////////////////////////////////////////////////////////
             //                   Launch the kernel                   //
             ///////////////////////////////////////////////////////////
-            cudaDeviceSynchronize();
-            MarchCubeCUDA<<<numBlocks, numThreads>>>(&domain_d, &cubeSize_d, twist, 0, meshVertices_d, meshNormals_d);
+            //printf("LAUNCHING KERNEL FOR PART 2 frame = %d \n",frame);
             checkCudaErrors(cudaDeviceSynchronize());
+            MarchCubeCUDA<<<numBlocks, numThreads>>>(domain_d, cubeSize_d, twist, 0, meshVertices_d + offset, meshNormals_d + offset);
+            checkCudaErrors(cudaDeviceSynchronize());
+            //printf("FINISHED KERNEL FOR PART 2 frame = %d \n",frame);
             end = high_resolution_clock::now();
             kernelTime += (duration<double>(end - start)).count();
 
@@ -555,12 +577,15 @@ int main(int argc, char *argv[])
             // testing
             if (correctTest)
             {
-                TestCorrectness(frameSize, meshVertices_h, meshNormals_h, frame);
+                //TestCorrectness(frameSize, meshVertices_h, meshNormals_h, frame);
+                TestCorrectness(frameSize, meshVertices_h, meshVertices_test, frame);
+                TestCorrectness(frameSize, meshNormals_h, meshNormals_test, frame);
             }
             end = high_resolution_clock::now();
             extraTime += (duration<double>(end - start)).count();
 
             twist += 1.0 / float(frameNum) * maxTwist;
+            offset += frameSize;
         }
 
         printf("\nPart1&2\nTime taken: \nKernels: %f sec | Performance: %f mln_cubes/sec \nMemcpy:  "
@@ -671,6 +696,9 @@ int main(int argc, char *argv[])
     ///////////////////////////////////////////////////////////////////
     //                         Free memory                           //
     ///////////////////////////////////////////////////////////////////
+    cudaFree(domain_d);
+    cudaFree(cubeSize_d);
+    
     cudaFree(meshVertices_d);
     cudaFree(meshNormals_d);
     cudaFree(meshVertices_h);
