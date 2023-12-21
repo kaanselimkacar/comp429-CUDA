@@ -466,7 +466,6 @@ int main(int argc, char *argv[])
     //         Allocate required memory and buffers here             //
     ///////////////////////////////////////////////////////////////////
    
-    // TODO: create domain_d, cubeSize_d, meshVertices_d, meshNormals_d
     // alloc meshVertiecs_d and meshNormals
     // init vars
     Rect3 *domain_d;
@@ -546,9 +545,9 @@ int main(int argc, char *argv[])
             ///////////////////////////////////////////////////////////
             //printf("LAUNCHING KERNEL FOR PART 2 frame = %d \n",frame);
             //checkCudaErrors(cudaDeviceSynchronize());
+            //TODO: allocate just enough memory for a single frame, and modify the code accordingly
             MarchCubeCUDA<<<numBlocks, numThreads>>>(domain_d, cubeSize_d, twist, 0, meshVertices_d + offset, meshNormals_d + offset);
             //MarchCubeCUDA<<<numBlocks, numThreads>>>(domain_d, cubeSize_d, 5, 0, meshVertices_d + offset, meshNormals_d + offset);
-               // TODO: fix memcpy back using offset
             checkCudaErrors(cudaDeviceSynchronize());
             //printf("FINISHED KERNEL FOR PART 2 frame = %d \n",frame);
             end = high_resolution_clock::now();
