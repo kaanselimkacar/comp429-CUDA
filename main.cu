@@ -276,7 +276,6 @@ __global__ void MarchCubeCUDA(
     int indZ = ind % NumZ;
     int indY = ((ind - indZ) / NumZ) % NumY;
     int indX = (((ind - indZ) / NumZ) - indY) / NumY;
-    
 
     if (indX >= NumX){
         return;
@@ -344,7 +343,79 @@ __global__ void MarchCubeCUDAMultiframe(
     float3 *meshVertices,
     float3 *meshNormals)
 {
+    int NumX = static_cast<int>(ceil(domainP->size.x / cubeSizeP->x));
+    int NumY = static_cast<int>(ceil(domainP->size.y / cubeSizeP->y));
+    int NumZ = static_cast<int>(ceil(domainP->size.z / cubeSizeP->z));
+    // calculate thread indx
+    int ind = threadIdx.x + blockIdx.x * blockDim.x;
+    
+    int indZ = ind % NumZ;
+    int indY = ((ind - indZ) / NumZ) % NumY;
+    int indX = (((ind - indZ) / NumZ) - indY) / NumY;
 
+    if (indX >= NumX){
+        return;
+    }
+    
+    // each thread should run frameNum times
+    // TODO: probably there is a better way of doing this
+    int i;
+    float3 *intersect = new float3[12];
+    
+    float x = domainP->min.x + indX * cubeSizeP->x;
+    float y = domainP->min.y + indY * cubeSizeP->y;
+    float z = domainP->min.z + indZ * cubeSizeP->z;
+    float3 min = make_float3(x,y,z);
+    float twist = 0; 
+    int offset2 = 0; 
+        
+    // create a cube made of 8 vertices
+    float3 pos[8];
+    float sdf[8];
+    
+    Rect3 space = {min, *cubeSizeP};
+    
+    float mx = space.min.x;
+    float my = space.min.y;
+    float mz = space.min.z;
+
+    float sx = space.size.x;
+    float sy = space.size.y;
+    float sz = space.size.z;
+
+    pos[0] = space.min;
+    pos[1] = make_float3(mx + sx, my, mz);
+    pos[2] = make_float3(mx + sx, my, mz + sz);
+    pos[3] = make_float3(mx, my, mz + sz);
+    pos[4] = make_float3(mx, my + sy, mz);
+    pos[5] = make_float3(mx + sx, my + sy, mz);
+    pos[6] = make_float3(mx + sx, my + sy, mz + sz);
+    pos[7] = make_float3(mx, my + sy, mz + sz);
+    
+    for (i = 0; i < frameNum; i++){
+        
+        // fill in the vertices of the cube
+        for(int i = 0; i < 9 ; ++i){
+            float sd = opTwist(pos[i] , twist);
+            if (sd == 0){
+                sd += 1e-6;
+            }
+            sdf[i] = sd;
+        }
+        
+        // map the vertices under the isosurface to intersectiong edges
+        int signConfig = Intersect(pos, sdf, intersect, isoLevel);
+
+        // now create and store the triangle data
+        int offset1 = ind * 16;
+        
+        Triangulate(twist, meshVertices + offset1 + offset2, meshNormals + offset1 + offset2, signConfig, intersect);
+        
+        offset2 += NumX * NumY * NumZ * 16;
+        twist += 1.0 / float(frameNum) * maxTwist;
+    }
+    delete[] intersect;
+    
 }
 
 ///////////////////////////////////////////////////////////////////
@@ -541,17 +612,12 @@ int main(int argc, char *argv[])
         for (frame = 0; frame < frameNum; frame++)
         {
             start = high_resolution_clock::now();
-            ///////////////////////////////////////////////////////////
-            //                   Launch the kernel                   //
-            ///////////////////////////////////////////////////////////
-
-            //printf("LAUNCHING KERNEL FOR PART 2 frame = %d \n",frame);
-            //checkCudaErrors(cudaDeviceSynchronize());
-            //TODO: allocate just enough memory for a single frame, and modify the code accordingly
-           
             // set device memory to all zeroes before kernel launch
             checkCudaErrors(cudaMemset(meshVertices_d, 0, frameSize * sizeof(float3)));
             checkCudaErrors(cudaMemset(meshNormals_d, 0, frameSize * sizeof(float3)));
+            ///////////////////////////////////////////////////////////
+            //                   Launch the kernel                   //
+            ///////////////////////////////////////////////////////////
             MarchCubeCUDA<<<numBlocks, numThreads>>>(domain_d, cubeSize_d, twist, 0, meshVertices_d, meshNormals_d);
             checkCudaErrors(cudaDeviceSynchronize());
             //printf("FINISHED KERNEL FOR PART 2 frame = %d \n",frame);
@@ -596,6 +662,7 @@ int main(int argc, char *argv[])
                kernelTime, (double(frameNum * NumX * NumY * NumZ) / 1000000.0 / kernelTime),
                memcpyTime, extraTime, (kernelTime + memcpyTime + extraTime));
         showMemUsage();
+
         cudaMemset(meshNormals_h, 0, frameNum * frameSize * sizeof(float3));
         cudaMemset(meshVertices_h, 0, frameNum * frameSize * sizeof(float3));
         twist = 0;
@@ -603,6 +670,16 @@ int main(int argc, char *argv[])
 
     ///////////////////////////////////////////////////////////////////
     //   Re-allocate some of the memory and buffers here if needed   //
+    ///////////////////////////////////////////////////////////////////
+    
+    // free prev. allocated memory
+    cudaFree(meshVertices_d);
+    cudaFree(meshNormals_d);
+    
+    // allocate memory for all frames
+    cudaMalloc(&meshVertices_d, frameSize * frameNum * sizeof(float3));
+    cudaMalloc(&meshNormals_d, frameSize * frameNum * sizeof(float3));
+    
     ///////////////////////////////////////////////////////////////////
     //                         PART 3 RUN:                           //
     ///////////////////////////////////////////////////////////////////
