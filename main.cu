@@ -508,7 +508,10 @@ int main(int argc, char *argv[])
     if (correctTest || part < 1)
     {
         int offset = 0;
-    
+        start = high_resolution_clock::now();
+        for(frame = 0; frame < frameNum; frame++)
+        {
+            MarchCube(domain, cubeSize, twist, 0, meshVertices_test + offset, meshNormals_test + offset);
             if (saveObj)
             {
                 string filename = "cpu_link_f" + to_string(frame) + "_n" + to_string(cubesRes) + ".obj";
@@ -543,8 +546,9 @@ int main(int argc, char *argv[])
             ///////////////////////////////////////////////////////////
             //printf("LAUNCHING KERNEL FOR PART 2 frame = %d \n",frame);
             //checkCudaErrors(cudaDeviceSynchronize());
-            //MarchCubeCUDA<<<numBlocks, numThreads>>>(domain_d, cubeSize_d, twist, 0, meshVertices_d + offset, meshNormals_d + offset);
-            MarchCubeCUDA<<<numBlocks, numThreads>>>(domain_d, cubeSize_d, 5, 0, meshVertices_d + offset, meshNormals_d + offset);
+            MarchCubeCUDA<<<numBlocks, numThreads>>>(domain_d, cubeSize_d, twist, 0, meshVertices_d + offset, meshNormals_d + offset);
+            //MarchCubeCUDA<<<numBlocks, numThreads>>>(domain_d, cubeSize_d, 5, 0, meshVertices_d + offset, meshNormals_d + offset);
+               // TODO: fix memcpy back using offset
             checkCudaErrors(cudaDeviceSynchronize());
             //printf("FINISHED KERNEL FOR PART 2 frame = %d \n",frame);
             end = high_resolution_clock::now();
@@ -555,10 +559,8 @@ int main(int argc, char *argv[])
             //            Copy the result back to host               //
             ///////////////////////////////////////////////////////////
             cudaDeviceSynchronize();
-            cudaMemcpy(meshVertices_h, meshVertices_d, frameNum* frameSize * sizeof(float3),
-                cudaMemcpyDeviceToHost);
-            cudaMemcpy(meshNormals_h, meshNormals_d, frameNum* frameSize * sizeof(float3),
-                cudaMemcpyDeviceToHost);
+            cudaMemcpy(meshVertices_h, meshVertices_d, frameNum * frameSize * sizeof(float3), cudaMemcpyDeviceToHost);
+            cudaMemcpy(meshNormals_h, meshNormals_d, frameNum * frameSize * sizeof(float3), cudaMemcpyDeviceToHost);
             end = high_resolution_clock::now();
 
             memcpyTime += (duration<double>(end - start)).count();
@@ -568,7 +570,7 @@ int main(int argc, char *argv[])
             if (saveObj)
             {
                 string filename = "part_1and2_link_f" + to_string(frame) + "_n" + to_string(cubesRes) + ".obj";
-                WriteObjFile(frameSize, meshVertices_h, meshNormals_h, filename);
+                WriteObjFile(frameSize, meshVertices_h + offset, meshNormals_h + offset, filename);
             }
 
             // testing
