@@ -259,16 +259,14 @@ __global__ void MarchCubeCUDA(
 {
     // with this implementation, frame 9 test passes, but
     // for other frames, we get only 0 values starting from index 80000 ish
-   
      
-    //printf("YARRRAAAAAAAAAAAAAAAAAAAA\n");
     // part 2
     int NumX = static_cast<int>(ceil(domainP->size.x / cubeSizeP->x));
     int NumY = static_cast<int>(ceil(domainP->size.y / cubeSizeP->y));
     int NumZ = static_cast<int>(ceil(domainP->size.z / cubeSizeP->z));
-    //printf("PENISSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS\n");
     // calculate thread indx
     int ind = threadIdx.x + blockIdx.x * blockDim.x;
+
     // ind = z + iy * NumZ + ix * NumY * NumZ
     // normally ind = x + y * ROWSIZE
     // ind % ROWSIZE = x
@@ -284,9 +282,7 @@ __global__ void MarchCubeCUDA(
         return;
     }
     
-    //TODO: fix 
     float3 *intersect = new float3[12];
-    //float3 intersect[12];
     
     float x = domainP->min.x + indX * cubeSizeP->x;
     float y = domainP->min.y + indY * cubeSizeP->y;
@@ -512,11 +508,7 @@ int main(int argc, char *argv[])
     if (correctTest || part < 1)
     {
         int offset = 0;
-        start = high_resolution_clock::now();
-        for (frame = 0; frame < frameNum; frame++)
-        {
-            MarchCube(domain, cubeSize, twist, 0, meshVertices_test + offset, meshNormals_test + offset);
-
+    
             if (saveObj)
             {
                 string filename = "cpu_link_f" + to_string(frame) + "_n" + to_string(cubesRes) + ".obj";
@@ -550,8 +542,9 @@ int main(int argc, char *argv[])
             //                   Launch the kernel                   //
             ///////////////////////////////////////////////////////////
             //printf("LAUNCHING KERNEL FOR PART 2 frame = %d \n",frame);
-            checkCudaErrors(cudaDeviceSynchronize());
-            MarchCubeCUDA<<<numBlocks, numThreads>>>(domain_d, cubeSize_d, twist, 0, meshVertices_d + offset, meshNormals_d + offset);
+            //checkCudaErrors(cudaDeviceSynchronize());
+            //MarchCubeCUDA<<<numBlocks, numThreads>>>(domain_d, cubeSize_d, twist, 0, meshVertices_d + offset, meshNormals_d + offset);
+            MarchCubeCUDA<<<numBlocks, numThreads>>>(domain_d, cubeSize_d, 5, 0, meshVertices_d + offset, meshNormals_d + offset);
             checkCudaErrors(cudaDeviceSynchronize());
             //printf("FINISHED KERNEL FOR PART 2 frame = %d \n",frame);
             end = high_resolution_clock::now();
