@@ -3,7 +3,7 @@ core file size          (blocks, -c) 0
 data seg size           (kbytes, -d) unlimited
 scheduling priority             (-e) 0
 file size               (blocks, -f) unlimited
-pending signals                 (-i) 2060405
+pending signals                 (-i) 2060603
 max locked memory       (kbytes, -l) unlimited
 max memory size         (kbytes, -m) 20971520
 open files                      (-n) 65535
@@ -22,12 +22,12 @@ Running compiled binary...
 resolution (n) = 50, number of frames (f) = 10
 blocks (b) = 1000, threads (t) = 64
 CPU
-Time taken: 1.910579 | Performance: 0.654252 mln_cubes/sec 
+Time taken: 2.212867 | Performance: 0.564878 mln_cubes/sec 
 
-Part1&2
+Part3
 Time taken: 
-Kernels: 0.207443 sec | Performance: 6.025746 mln_cubes/sec 
-Memcpy:  0.036650 sec 
-Extra:   0.671622 sec 
-Total:   0.915715 sec
-GPU memory usage: used = 462.000000, free = 32039.125000 MB, total = 32501.125000 MB
+Kernels: 0.032350 sec | Performance: 38.639913 mln_cubes/sec 
+Memcpy:  0.051631 sec 
+Extra:   0.794832 sec 
+Total:   0.878813 sec
+GPU memory usage: used = 874.000000, free = 31627.125000 MB, total = 32501.125000 MB
