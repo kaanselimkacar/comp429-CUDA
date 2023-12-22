@@ -689,7 +689,7 @@ int main(int argc, char *argv[])
         ///////////////////////////////////////////////////////////////
         //                     Launch the kernel                     //
         ///////////////////////////////////////////////////////////////
-        // MarchCubeCUDAMultiframe<<<numBlocks, numThreads>>>(domain_d, cubeSize_d, frameNum, maxTwist, 0, meshVertices_d, meshNormals_d);
+        MarchCubeCUDAMultiframe<<<numBlocks, numThreads>>>(domain_d, cubeSize_d, frameNum, maxTwist, 0, meshVertices_d, meshNormals_d);
         checkCudaErrors(cudaDeviceSynchronize());
         end = high_resolution_clock::now();
         kernelTime = (duration<double>(end - start)).count();
@@ -698,6 +698,8 @@ int main(int argc, char *argv[])
         ///////////////////////////////////////////////////////////////
         //              Copy the result back to host                 //
         ///////////////////////////////////////////////////////////////
+        cudaMemcpy(meshVertices_h, meshVertices_d, frameSize * frameNum * sizeof(float3), cudaMemcpyDeviceToHost);
+        cudaMemcpy(meshNormals_h, meshNormals_d, frameSize * frameNum * sizeof(float3), cudaMemcpyDeviceToHost);
         end = high_resolution_clock::now();
         memcpyTime = (duration<double>(end - start)).count();
 
