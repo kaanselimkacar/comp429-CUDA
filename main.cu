@@ -257,76 +257,79 @@ __global__ void MarchCubeCUDA(
     float3 *meshVertices,
     float3 *meshNormals)
 {
-    // with this implementation, frame 9 test passes, but
-    // for other frames, we get only 0 values starting from index 80000 ish
-     
     // part 2
     int NumX = static_cast<int>(ceil(domainP->size.x / cubeSizeP->x));
     int NumY = static_cast<int>(ceil(domainP->size.y / cubeSizeP->y));
     int NumZ = static_cast<int>(ceil(domainP->size.z / cubeSizeP->z));
+    
+    // calculate number of cubes per thread
+    // 16 * NumX * NumY * NumZ / block.Dim.x * grid.Dim.x
+    int numCubes = (NumX * NumY * NumZ / (blockDim.x * gridDim.x)) + 1;
+    
     // calculate thread indx
     int ind = threadIdx.x + blockIdx.x * blockDim.x;
-
-    // ind = z + iy * NumZ + ix * NumY * NumZ
-    // normally ind = x + y * ROWSIZE
-    // ind % ROWSIZE = x
-    // ind // ROWSIZE = y // round down
-    // or ind - x / ROWSIZE = y
-    // in this case ind % NumZ = z
-    int indZ = ind % NumZ;
-    int indY = ((ind - indZ) / NumZ) % NumY;
-    int indX = (((ind - indZ) / NumZ) - indY) / NumY;
-
-    if (indX >= NumX){
-        return;
-    }
     
     float3 *intersect = new float3[12];
-    
-    float x = domainP->min.x + indX * cubeSizeP->x;
-    float y = domainP->min.y + indY * cubeSizeP->y;
-    float z = domainP->min.z + indZ * cubeSizeP->z;
-    float3 min = make_float3(x,y,z);
     
     // create a cube made of 8 vertices
     float3 pos[8];
     float sdf[8];
     
-    Rect3 space = {min, *cubeSizeP};
+    int indZ, indY, indX, signConfig, offset;
+    float x, y, z, mx, my, mz, sx, sy, sz, sd;
+    float3 min;
+    for(int j = 0; j < numCubes; j++)
+    {
+        indZ = ind % NumZ;
+        indY = ((ind - indZ) / NumZ) % NumY;
+        indX = (((ind - indZ) / NumZ) - indY) / NumY;
     
-    float mx = space.min.x;
-    float my = space.min.y;
-    float mz = space.min.z;
-
-    float sx = space.size.x;
-    float sy = space.size.y;
-    float sz = space.size.z;
-
-    pos[0] = space.min;
-    pos[1] = make_float3(mx + sx, my, mz);
-    pos[2] = make_float3(mx + sx, my, mz + sz);
-    pos[3] = make_float3(mx, my, mz + sz);
-    pos[4] = make_float3(mx, my + sy, mz);
-    pos[5] = make_float3(mx + sx, my + sy, mz);
-    pos[6] = make_float3(mx + sx, my + sy, mz + sz);
-    pos[7] = make_float3(mx, my + sy, mz + sz);
-   
-    // fill in the vertices of the cube
-    for(int i = 0; i < 9 ; ++i){
-        float sd = opTwist(pos[i] , twist);
-        if (sd == 0){
-            sd += 1e-6;
+        if (indX >= NumX){
+            break;
         }
-        sdf[i] = sd;
-    }
+        x = domainP->min.x + indX * cubeSizeP->x;
+        y = domainP->min.y + indY * cubeSizeP->y;
+        z = domainP->min.z + indZ * cubeSizeP->z;
+        min = make_float3(x,y,z);
     
-    // map the vertices under the isosurface to intersectiong edges
-    int signConfig = Intersect(pos, sdf, intersect, isoLevel);
+        Rect3 space = {min, *cubeSizeP};
+    
+        mx = space.min.x;
+        my = space.min.y;
+        mz = space.min.z;
 
-    // now create and store the triangle data
-    int offset = ind * 16;
-    Triangulate(twist, meshVertices + offset, meshNormals + offset, signConfig, intersect);
+        sx = space.size.x;
+        sy = space.size.y;
+        sz = space.size.z;
+
+        pos[0] = space.min;
+        pos[1] = make_float3(mx + sx, my, mz);
+        pos[2] = make_float3(mx + sx, my, mz + sz);
+        pos[3] = make_float3(mx, my, mz + sz);
+        pos[4] = make_float3(mx, my + sy, mz);
+        pos[5] = make_float3(mx + sx, my + sy, mz);
+        pos[6] = make_float3(mx + sx, my + sy, mz + sz);
+        pos[7] = make_float3(mx, my + sy, mz + sz);
     
+        // fill in the vertices of the cube
+        for(int i = 0; i < 9 ; ++i){
+            sd = opTwist(pos[i] , twist);
+            if (sd == 0){
+                sd += 1e-6;
+            }
+            sdf[i] = sd;
+        }
+        // map the vertices under the isosurface to intersectiong edges
+        signConfig = Intersect(pos, sdf, intersect, isoLevel);
+
+        // now create and store the triangle data
+        offset = ind * 16;
+        Triangulate(twist, meshVertices + offset, meshNormals + offset, signConfig, intersect);
+        
+        //update ind
+        ind += blockDim.x * gridDim.x;
+        
+    }
     delete[] intersect;
 }
 
@@ -457,7 +460,7 @@ int main(int argc, char *argv[])
     int saveObj = 0;
     int correctTest = 0;
     
-    int numBlocks = 31250;
+    int numBlocks = 1000;
     int numThreads = 64;
     //int numBlocks = 40;
     //int numThreads = 64;
