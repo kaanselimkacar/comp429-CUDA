@@ -467,7 +467,8 @@ void TestCorrectness(int frameSize, float3 *result, float3 *truth, int frame)
 
 int main(int argc, char *argv[])
 {
-    int cubesRes = 50;
+    //int cubesRes = 50;
+    int cubesRes = 100;
     int frameNum = 10;
     //int frameNum = 1;
     int saveObj = 0;
@@ -760,10 +761,15 @@ int main(int argc, char *argv[])
     cudaMalloc(&meshNormals_d, frameSize * 2 * sizeof(float3));    
     cudaMalloc(&meshVertices_d, frameSize * 2 * sizeof(float3));
 
+    // create streams
     cudaStream_t streams[2];
    
     cudaStreamCreate(&streams[0]);      
-    cudaStreamCreate(&streams[1]);      
+    cudaStreamCreate(&streams[1]);  
+    
+    // create event
+    cudaEvent_t event;
+    cudaEventCreate(&event);    
     ///////////////////////////////////////////////////////////////////
     //                         PART 4 RUN:                           //
     ///////////////////////////////////////////////////////////////////
@@ -774,25 +780,30 @@ int main(int argc, char *argv[])
         for (frame = 0; frame < frameNum; frame++)
         {
             int zartzurt = frame % 2;
-            int zartzurt2 = (frame + 1) % 2;
+            //int zartzurt2 = (frame + 1) % 2;
+            checkCudaErrors(cudaMemsetAsync(meshVertices_d + zartzurt * frameSize, 0, frameSize * sizeof(float3), streams[0]));
+            checkCudaErrors(cudaMemsetAsync(meshNormals_d + zartzurt * frameSize, 0, frameSize * sizeof(float3), streams[0]));
             ///////////////////////////////////////////////////////////
             //                   Launch the kernel                   //
             ///////////////////////////////////////////////////////////
             MarchCubeCUDA<<<numBlocks, numThreads, 0, streams[0]>>>(domain_d, cubeSize_d, twist, 0, meshVertices_d + frameSize * zartzurt, meshNormals_d + frameSize * zartzurt);
+            cudaEventRecord(event, streams[0]);
             ///////////////////////////////////////////////////////////
             //         Copy the result back to host (async)          //
             ///////////////////////////////////////////////////////////
-            if (frame > 0)
-            {
-                cudaMemcpyAsync(meshVertices_h + offset - frameSize, meshVertices_d + zartzurt2 * frameSize, frameSize * sizeof(float3), cudaMemcpyDeviceToHost, streams[1] );
-                cudaMemcpyAsync(meshNormals_h + offset - frameSize, meshNormals_d + zartzurt2 * frameSize, frameSize * sizeof(float3), cudaMemcpyDeviceToHost, streams[1]);
-            }
-            if (frame == frameNum)
+            cudaStreamWaitEvent(streams[1], event);
+            //checkCudaErrors(cudaDeviceSynchronize());
+
+            cudaMemcpyAsync(meshVertices_h + offset, meshVertices_d + zartzurt * frameSize, frameSize * sizeof(float3), cudaMemcpyDeviceToHost, streams[1] );
+            cudaMemcpyAsync(meshNormals_h + offset, meshNormals_d + zartzurt * frameSize, frameSize * sizeof(float3), cudaMemcpyDeviceToHost, streams[1]);
+            /*
+            if (frame == (frameNum - 1) )
             {
                 // ?????
-                cudaMemcpyAsync(meshVertices_h + offset - frameSize, meshVertices_d + zartzurt * frameSize, frameSize * sizeof(float3), cudaMemcpyDeviceToHost, streams[0] );
-                cudaMemcpyAsync(meshNormals_h + offset - frameSize, meshNormals_d + zartzurt * frameSize, frameSize * sizeof(float3), cudaMemcpyDeviceToHost, streams[0]);
+                cudaMemcpyAsync(meshVertices_h + offset, meshVertices_d + zartzurt * frameSize, frameSize * sizeof(float3), cudaMemcpyDeviceToHost, streams[0] );
+                cudaMemcpyAsync(meshNormals_h + offset, meshNormals_d + zartzurt * frameSize, frameSize * sizeof(float3), cudaMemcpyDeviceToHost, streams[0]);
             }
+            */
             // save the object file if told so
             if (saveObj)
             {
@@ -804,8 +815,8 @@ int main(int argc, char *argv[])
             // testing
             if (correctTest)
             {
-                checkCudaErrors(cudaDeviceSynchronize());
-                //TestCorrectness(frameSize, meshVertices_h + offset, meshNormals_h + offset, frame);
+                //checkCudaErrors(cudaDeviceSynchronize());
+                //TestCorrectness(frameSize, meshVertices_h + offset, meshNormals_test + offset, frame);
             }
 
             offset += frameSize;
@@ -818,6 +829,13 @@ int main(int argc, char *argv[])
         printf("\nPart4\nTime taken: \nTotal: %f sec\n", totalTime);
         showMemUsage();
     }
+    int offset = 0;
+    for (int frame = 0; frame < frameNum; frame++){
+        
+                string filename = "part_4_link_f" + to_string(frame) + "_n" + to_string(cubesRes) + ".obj";
+                WriteObjFile(frameSize, meshVertices_h + offset, meshNormals_h + offset, filename);
+            offset += frameSize;
+        }
     // destroy the streams
     cudaStreamDestroy(streams[0]);
     cudaStreamDestroy(streams[1]);
