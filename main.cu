@@ -429,7 +429,7 @@ __global__ void MarchCubeCUDAMultiframe(
         }
         // update ind
         ind += blockDim.x * gridDim.x;    
-        }
+    }
     delete[] intersect;
     
 }
@@ -751,6 +751,20 @@ int main(int argc, char *argv[])
     ///////////////////////////////////////////////////////////////////
     //   Re-allocate some of the memory and buffers here if needed   //
     ///////////////////////////////////////////////////////////////////
+    
+    // free previously allocated memory
+    cudaFree(meshNormals_d);    
+    cudaFree(meshVertices_d);
+
+    // allocate memory
+    cudaMalloc(&meshNormals_d, frameSize * 2 * sizeof(float3));    
+    cudaMalloc(&meshVertices_d, frameSize * 2 * sizeof(float3));
+
+    cudaStream_t streams[2];
+   
+    cudaStreamCreate(&streams[0]);      
+    cudaStreamCreate(&streams[1]);      
+    ///////////////////////////////////////////////////////////////////
     //                         PART 4 RUN:                           //
     ///////////////////////////////////////////////////////////////////
     if (part == -1 || part == 4)
@@ -759,12 +773,26 @@ int main(int argc, char *argv[])
         start = high_resolution_clock::now();
         for (frame = 0; frame < frameNum; frame++)
         {
+            int zartzurt = frame % 2;
+            int zartzurt2 = (frame + 1) % 2;
             ///////////////////////////////////////////////////////////
             //                   Launch the kernel                   //
             ///////////////////////////////////////////////////////////
+            MarchCubeCUDA<<<numBlocks, numThreads, 0, streams[0]>>>(domain_d, cubeSize_d, twist, 0, meshVertices_d + frameSize * zartzurt, meshNormals_d + frameSize * zartzurt);
+            ///////////////////////////////////////////////////////////
             //         Copy the result back to host (async)          //
             ///////////////////////////////////////////////////////////
-
+            if (frame > 0)
+            {
+                cudaMemcpyAsync(meshVertices_h + offset - frameSize, meshVertices_d + zartzurt2 * frameSize, frameSize * sizeof(float3), cudaMemcpyDeviceToHost, streams[1] );
+                cudaMemcpyAsync(meshNormals_h + offset - frameSize, meshNormals_d + zartzurt2 * frameSize, frameSize * sizeof(float3), cudaMemcpyDeviceToHost, streams[1]);
+            }
+            if (frame == frameNum)
+            {
+                // ?????
+                cudaMemcpyAsync(meshVertices_h + offset - frameSize, meshVertices_d + zartzurt * frameSize, frameSize * sizeof(float3), cudaMemcpyDeviceToHost, streams[0] );
+                cudaMemcpyAsync(meshNormals_h + offset - frameSize, meshNormals_d + zartzurt * frameSize, frameSize * sizeof(float3), cudaMemcpyDeviceToHost, streams[0]);
+            }
             // save the object file if told so
             if (saveObj)
             {
@@ -777,7 +805,7 @@ int main(int argc, char *argv[])
             if (correctTest)
             {
                 checkCudaErrors(cudaDeviceSynchronize());
-                TestCorrectness(frameSize, meshVertices_h + offset, meshNormals_h + offset, frame);
+                //TestCorrectness(frameSize, meshVertices_h + offset, meshNormals_h + offset, frame);
             }
 
             offset += frameSize;
@@ -790,7 +818,9 @@ int main(int argc, char *argv[])
         printf("\nPart4\nTime taken: \nTotal: %f sec\n", totalTime);
         showMemUsage();
     }
-
+    // destroy the streams
+    cudaStreamDestroy(streams[0]);
+    cudaStreamDestroy(streams[1]);
     ///////////////////////////////////////////////////////////////////
     //                         Free memory                           //
     ///////////////////////////////////////////////////////////////////

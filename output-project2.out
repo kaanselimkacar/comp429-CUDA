@@ -22,12 +22,9 @@ Running compiled binary...
 resolution (n) = 50, number of frames (f) = 10
 blocks (b) = 1000, threads (t) = 64
 CPU
-Time taken: 2.212867 | Performance: 0.564878 mln_cubes/sec 
+Time taken: 1.968656 | Performance: 0.634951 mln_cubes/sec 
 
-Part3
+Part4
 Time taken: 
-Kernels: 0.032350 sec | Performance: 38.639913 mln_cubes/sec 
-Memcpy:  0.051631 sec 
-Extra:   0.794832 sec 
-Total:   0.878813 sec
-GPU memory usage: used = 874.000000, free = 31627.125000 MB, total = 32501.125000 MB
+Total: 0.605894 sec
+GPU memory usage: used = 506.000000, free = 31995.125000 MB, total = 32501.125000 MB
