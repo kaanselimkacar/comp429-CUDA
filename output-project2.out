@@ -19,28 +19,28 @@ file locks                      (-x) unlimited
 Running Job...!
 ===============================================================================
 Running compiled binary...
-resolution (n) = 100, number of frames (f) = 10
-blocks (b) = 1000, threads (t) = 64
+resolution (n) = 4, number of frames (f) = 32768
+blocks (b) = 160, threads (t) = 256
 CPU
-Time taken: 9.049224 | Performance: 1.105067 mln_cubes/sec 
+Time taken: 4.517923 | Performance: 0.464185 mln_cubes/sec 
 
 Part1&2
 Time taken: 
-Kernels: 0.212183 sec | Performance: 47.129082 mln_cubes/sec 
-Memcpy:  0.291729 sec 
-Extra:   0.000003 sec 
-Total:   0.503915 sec
-GPU memory usage: used = 794.000000, free = 31707.125000 MB, total = 32501.125000 MB
+Kernels: 406.652980 sec | Performance: 0.005157 mln_cubes/sec 
+Memcpy:  0.509861 sec 
+Extra:   0.000912 sec 
+Total:   407.163753 sec
+GPU memory usage: used = 414.000000, free = 32087.125000 MB, total = 32501.125000 MB
 
 Part3
 Time taken: 
-Kernels: 0.026120 sec | Performance: 382.848275 mln_cubes/sec 
-Memcpy:  0.291536 sec 
-Extra:   0.000000 sec 
-Total:   0.317656 sec
-GPU memory usage: used = 4090.000000, free = 28411.125000 MB, total = 32501.125000 MB
+Kernels: 0.692961 sec | Performance: 3.026364 mln_cubes/sec 
+Memcpy:  0.061163 sec 
+Extra:   0.000049 sec 
+Total:   0.754173 sec
+GPU memory usage: used = 1182.000000, free = 31319.125000 MB, total = 32501.125000 MB
 
 Part4
 Time taken: 
-Total: 0.311655 sec
-GPU memory usage: used = 1162.000000, free = 31339.125000 MB, total = 32501.125000 MB
+Total: 405.313928 sec
+GPU memory usage: used = 414.000000, free = 32087.125000 MB, total = 32501.125000 MB

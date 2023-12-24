@@ -37,4 +37,4 @@ echo "Running compiled binary..."
 
 #echo "Parallel version with 16 threads"
 #export OMP_NUM_THREADS=16
-./mcubes -p -1
+./mcubes -p -1 -n 4 -f 32768 -b 160 -t 256

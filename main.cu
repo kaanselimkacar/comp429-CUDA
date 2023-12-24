@@ -257,6 +257,7 @@ __global__ void MarchCubeCUDA(
     float3 *meshVertices,
     float3 *meshNormals)
 {
+    //printf("This is part2\n");
     // part 2
     int NumX = static_cast<int>(ceil(domainP->size.x / cubeSizeP->x));
     int NumY = static_cast<int>(ceil(domainP->size.y / cubeSizeP->y));
@@ -346,6 +347,7 @@ __global__ void MarchCubeCUDAMultiframe(
     float3 *meshVertices,
     float3 *meshNormals)
 {
+    //printf("This is part3\n");
     int NumX = static_cast<int>(ceil(domainP->size.x / cubeSizeP->x));
     int NumY = static_cast<int>(ceil(domainP->size.y / cubeSizeP->y));
     int NumZ = static_cast<int>(ceil(domainP->size.z / cubeSizeP->z));
@@ -637,6 +639,7 @@ int main(int argc, char *argv[])
             ///////////////////////////////////////////////////////////
             MarchCubeCUDA<<<numBlocks, numThreads>>>(domain_d, cubeSize_d, twist, 0, meshVertices_d, meshNormals_d);
             checkCudaErrors(cudaDeviceSynchronize());
+            cudaGetErrorString(cudaGetLastError());
             //printf("FINISHED KERNEL FOR PART 2 frame = %d \n",frame);
             end = high_resolution_clock::now();
             kernelTime += (duration<double>(end - start)).count();
@@ -708,6 +711,7 @@ int main(int argc, char *argv[])
         ///////////////////////////////////////////////////////////////
         MarchCubeCUDAMultiframe<<<numBlocks, numThreads>>>(domain_d, cubeSize_d, frameNum, maxTwist, 0, meshVertices_d, meshNormals_d);
         checkCudaErrors(cudaDeviceSynchronize());
+        cudaGetErrorString(cudaGetLastError());
         end = high_resolution_clock::now();
         kernelTime = (duration<double>(end - start)).count();
 
@@ -787,6 +791,7 @@ int main(int argc, char *argv[])
             //                   Launch the kernel                   //
             ///////////////////////////////////////////////////////////
             MarchCubeCUDA<<<numBlocks, numThreads, 0, streams[0]>>>(domain_d, cubeSize_d, twist, 0, meshVertices_d + frameSize * zartzurt, meshNormals_d + frameSize * zartzurt);
+            //cudaGetErrorString(cudaGetLastError());
             cudaEventRecord(event, streams[0]);
             ///////////////////////////////////////////////////////////
             //         Copy the result back to host (async)          //
@@ -829,13 +834,6 @@ int main(int argc, char *argv[])
         printf("\nPart4\nTime taken: \nTotal: %f sec\n", totalTime);
         showMemUsage();
     }
-    int offset = 0;
-    for (int frame = 0; frame < frameNum; frame++){
-        
-                string filename = "part_4_link_f" + to_string(frame) + "_n" + to_string(cubesRes) + ".obj";
-                WriteObjFile(frameSize, meshVertices_h + offset, meshNormals_h + offset, filename);
-            offset += frameSize;
-        }
     // destroy the streams
     cudaStreamDestroy(streams[0]);
     cudaStreamDestroy(streams[1]);
